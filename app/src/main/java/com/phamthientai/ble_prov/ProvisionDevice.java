@@ -1,5 +1,7 @@
 package com.phamthientai.ble_prov;
 
+import android.content.Intent;
+
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanResult;
@@ -66,6 +68,7 @@ public class ProvisionDevice extends AppCompatActivity {
     private ProgressBar progressBar;
     private TextView tvStatus;
     private boolean deviceFound = false;
+    private boolean deviceProvisionedSuccessfully = false; // Add this flag
     private ArrayList<String> wifiNetworks = new ArrayList<>();
     private ArrayAdapter<String> wifiAdapter;
     private String selectedSSID = "";
@@ -88,8 +91,8 @@ public class ProvisionDevice extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Provision Device"); // Tuỳ chỉnh tiêu đề nếu muốn
         }
-
     }
+
     @Override
     public boolean onSupportNavigateUp() {
         finish(); // Đóng activity và quay lại
@@ -126,7 +129,7 @@ public class ProvisionDevice extends AppCompatActivity {
         btnManualSetup.setOnClickListener(v -> setupManually());
 
         btnScanNetworks.setOnClickListener(v -> {
-            if (espDevice != null ) {
+            if (espDevice != null) {
                 scanWifiNetworks();
             } else {
                 showToast("Device not connected. Please connect first.");
@@ -134,7 +137,7 @@ public class ProvisionDevice extends AppCompatActivity {
         });
 
         btnProvision.setOnClickListener(v -> {
-            if (espDevice != null ) {
+            if (espDevice != null) {
                 String ssid = etSSID.getText().toString();
                 String password = etPassword.getText().toString();
 
@@ -200,13 +203,6 @@ public class ProvisionDevice extends AppCompatActivity {
         updateStatus("Scanning QR Code...");
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         provisionManager.scanQRCode(codeScanner, new QRCodeScanListener() {
@@ -255,13 +251,6 @@ public class ProvisionDevice extends AppCompatActivity {
         updateStatus("Searching for BLE devices...");
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         provisionManager.searchBleEspDevices("PROV_", new BleScanListener() {
@@ -275,13 +264,6 @@ public class ProvisionDevice extends AppCompatActivity {
             public void onPeripheralFound(BluetoothDevice device, ScanResult scanResult) {
                 runOnUiThread(() -> {
                     if (ActivityCompat.checkSelfPermission(ProvisionDevice.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        // TODO: Consider calling
-                        //    ActivityCompat#requestPermissions
-                        // here to request the missing permissions, and then overriding
-                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                        //                                          int[] grantResults)
-                        // to handle the case where the user grants the permission. See the documentation
-                        // for ActivityCompat#requestPermissions for more details.
                         return;
                     }
                     if (device.getName() != null && device.getName().equals(espDevice.getDeviceName())) {
@@ -389,9 +371,15 @@ public class ProvisionDevice extends AppCompatActivity {
     }
 
     private void scanWifiNetworks() {
+        if (espDevice == null) {
+            showToast("Device not connected. Please connect first.");
+            return;
+        }
+
         progressBar.setVisibility(View.VISIBLE);
         updateStatus("Scanning WiFi networks...");
         wifiNetworks.clear();
+        wifiAdapter.notifyDataSetChanged();
 
         espDevice.scanNetworks(new WiFiScanListener() {
             @Override
@@ -408,7 +396,6 @@ public class ProvisionDevice extends AppCompatActivity {
                     updateStatus("WiFi scan completed. Found " + wifiList.size() + " networks.");
                 });
             }
-
 
             @Override
             public void onWiFiScanFailed(Exception e) {
@@ -474,9 +461,57 @@ public class ProvisionDevice extends AppCompatActivity {
             @Override
             public void deviceProvisioningSuccess() {
                 runOnUiThread(() -> {
-                    showAddDeviceDialog();
                     progressBar.setVisibility(View.GONE);
                     updateStatus("Device provisioned successfully!");
+                    deviceProvisionedSuccessfully = true; // Set flag for successful provisioning
+
+                    // Mở dialog để nhập tên + icon + phòng
+                    View dialogView = LayoutInflater.from(ProvisionDevice.this).inflate(R.layout.dialog_add_device, null);
+                    EditText etDeviceName = dialogView.findViewById(R.id.etDeviceName);
+                    RadioGroup iconGroup = dialogView.findViewById(R.id.iconRadioGroup);
+                    Spinner spinnerRoom = dialogView.findViewById(R.id.spinnerRoom);
+
+                    ArrayAdapter<String> roomAdapter = new ArrayAdapter<>(ProvisionDevice.this,
+                            android.R.layout.simple_spinner_dropdown_item, loadRoomList());
+                    spinnerRoom.setAdapter(roomAdapter);
+
+                    new AlertDialog.Builder(ProvisionDevice.this)
+                            .setTitle("Thêm thiết bị")
+                            .setView(dialogView)
+                            .setPositiveButton("Lưu", (dialog, which) -> {
+                                String name = etDeviceName.getText().toString().trim();
+                                int iconResId = R.drawable.ic_device;
+
+                                int checkedId = iconGroup.getCheckedRadioButtonId();
+                                if (checkedId == R.id.rbLight) {
+                                    iconResId = R.drawable.ic_light;
+                                } else if (checkedId == R.id.rbFan) {
+                                    iconResId = R.drawable.ic_fan;
+                                } else if (checkedId == R.id.rbSensor) {
+                                    iconResId = R.drawable.ic_sensor;
+                                }
+
+                                if (!name.isEmpty()) {
+                                    String room = spinnerRoom.getSelectedItem().toString();
+                                    DeviceModel newDevice = new DeviceModel(name, iconResId, room);
+                                    saveDevice(newDevice);
+                                    Toast.makeText(ProvisionDevice.this, "Thiết bị đã được lưu!", Toast.LENGTH_SHORT).show();
+
+                                    // Open device control screen
+                                    Intent intent = new Intent(ProvisionDevice.this, LedControlActivity.class);
+                                    intent.putExtra("device_name", name);
+                                    intent.putExtra("device_icon", iconResId);
+                                    startActivity(intent);
+                                    // Removed the finish() call to allow returning to this activity
+
+                                    // Reset device state for potential next provision
+                                    resetDeviceState();
+                                } else {
+                                    Toast.makeText(ProvisionDevice.this, "Vui lòng nhập tên thiết bị", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("Huỷ", null)
+                            .show();
                 });
             }
 
@@ -488,6 +523,19 @@ public class ProvisionDevice extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    // Add this method to reset the device state for a new provision process
+    private void resetDeviceState() {
+        espDevice = null;
+        deviceFound = false;
+        wifiNetworks.clear();
+        wifiAdapter.notifyDataSetChanged();
+        etSSID.setText("");
+        etPassword.setText("");
+        etDeviceName.setText("");
+        etPop.setText("");
+        tvStatus.setText("Ready to provision a new device");
     }
 
     private void updateStatus(String message) {
@@ -514,6 +562,12 @@ public class ProvisionDevice extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         codeScanner.startPreview();
+
+        // If coming back from another activity after successful provisioning, reset the device state
+        if (deviceProvisionedSuccessfully) {
+            resetDeviceState();
+            deviceProvisionedSuccessfully = false;
+        }
     }
 
     @Override
@@ -521,6 +575,7 @@ public class ProvisionDevice extends AppCompatActivity {
         codeScanner.releaseResources();
         super.onPause();
     }
+
     private void saveDevice(DeviceModel device) {
         SharedPreferences prefs = getSharedPreferences("device_prefs", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -558,7 +613,6 @@ public class ProvisionDevice extends AppCompatActivity {
         return roomList;
     }
 
-
     private void showAddDeviceDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_device, null);
         EditText etDeviceName = dialogView.findViewById(R.id.etDeviceName);
@@ -587,7 +641,7 @@ public class ProvisionDevice extends AppCompatActivity {
 
                     if (!name.isEmpty()) {
                         String selectedRoom = spinnerRoom.getSelectedItem().toString();
-                        DeviceModel newDevice = new DeviceModel(name, iconResId, selectedRoom, "Unknown");
+                        DeviceModel newDevice = new DeviceModel(name, iconResId, selectedRoom);
                         saveDevice(newDevice);
                         Toast.makeText(this, "Thiết bị đã được lưu!", Toast.LENGTH_SHORT).show();
                     } else {
@@ -597,6 +651,4 @@ public class ProvisionDevice extends AppCompatActivity {
                 .setNegativeButton("Huỷ", null)
                 .show();
     }
-
-
 }

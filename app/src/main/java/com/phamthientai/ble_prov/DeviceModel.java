@@ -4,12 +4,12 @@ public class DeviceModel {
     private String name;
     private int iconResId;
     private String room;
-    private String status = "Unknown" ;
-    public DeviceModel(String name, int iconResId, String room, String status) {
+
+    public DeviceModel(String name, int iconResId, String room) {
         this.name = name;
         this.iconResId = iconResId;
         this.room = room;
-        this.status = status;
+
     }
 
     public String getName() {
@@ -22,10 +22,5 @@ public class DeviceModel {
     public String getRoom() {
         return room;
     }
-    public String getStatus() {
-        return status;
-    }
-    public void setStatus(String status) {
-        this.status = status;
-    }
+
 }

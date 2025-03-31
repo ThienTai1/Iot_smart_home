@@ -1,12 +1,15 @@
 package com.phamthientai.ble_prov;
 
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -20,92 +23,104 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 public class LedControlActivity extends AppCompatActivity {
 
+    private EditText edtIp, edtPort;
+    private Button btnSave;
+    private TextView tvName;
+    private ImageView imgIcon;
+    private Button btnOn, btnOff;
+    private Switch swToggle;
+
     private MqttClient mqttClient;
     private String topicPub = "esp32/led/control";
     private String topicSub = "esp32/led/status";
 
-    private TextView statusText;
-    private ImageView ledIcon;
-    private boolean isLightOn = false;
-
-    private EditText etIp, etPort;
-    private Button btnSaveIp, btnOn, btnOff;
-
-    private static final String PREFS = "mqtt_prefs";
-    private static final String KEY_IP = "mqtt_ip";
-    private static final String KEY_PORT = "mqtt_port";
+    private boolean isLedOn = false;
+    private boolean isUpdatingSwitch = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_led_control);
 
-        TextView tvName = findViewById(R.id.tvDeviceName);
-        ledIcon = findViewById(R.id.imgDeviceIcon);
-        statusText = findViewById(R.id.tvStatus);
-        etIp = findViewById(R.id.etMqttIp);
-        etPort = findViewById(R.id.etMqttPort);
-        btnSaveIp = findViewById(R.id.btnSaveIp);
-        btnOn = findViewById(R.id.btnOn);
-        btnOff = findViewById(R.id.btnOff);
+        tvName = findViewById(R.id.tvDeviceName);
+        imgIcon = findViewById(R.id.imgDeviceIcon);
+        edtIp = findViewById(R.id.edtIp);
+        edtPort = findViewById(R.id.edtPort);
+        btnSave = findViewById(R.id.btnSaveMqtt);
+        btnOn = findViewById(R.id.btnTurnOn);
+        btnOff = findViewById(R.id.btnTurnOff);
+        swToggle = findViewById(R.id.switchToggle);
 
         String name = getIntent().getStringExtra("device_name");
-        int icon = getIntent().getIntExtra("device_icon", R.drawable.ic_device);
-        topicPub = "esp32/" + name + "/control";
-        topicSub = "esp32/" + name + "/status";
+        int iconRes = getIntent().getIntExtra("device_icon", R.drawable.ic_device);
 
         tvName.setText(name);
-        ledIcon.setImageResource(icon);
+        imgIcon.setImageResource(iconRes);
 
-        loadSavedMqttConfig();
-        connectMQTT();
-
-        btnSaveIp.setOnClickListener(v -> {
-            saveMqttConfig();
-            connectMQTT();
-        });
+        btnSave.setOnClickListener(v -> connectMQTT());
 
         btnOn.setOnClickListener(v -> publishCommand("ON"));
         btnOff.setOnClickListener(v -> publishCommand("OFF"));
+
+        swToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!isUpdatingSwitch) {
+                publishCommand(isChecked ? "ON" : "OFF");
+            }
+        });
+
+        // Load IP & Port từ SharedPreferences và tự kết nối nếu có
+        SharedPreferences prefs = getSharedPreferences("mqtt_config", MODE_PRIVATE);
+        String savedIp = prefs.getString("mqtt_ip", "");
+        String savedPort = prefs.getString("mqtt_port", "");
+
+        edtIp.setText(savedIp);
+        edtPort.setText(savedPort);
+
+        if (!savedIp.isEmpty() && !savedPort.isEmpty()) {
+            connectMQTT();
+        }
     }
 
     private void connectMQTT() {
-        String ip = etIp.getText().toString().trim();
-        String port = etPort.getText().toString().trim();
+        String ip = edtIp.getText().toString().trim();
+        String port = edtPort.getText().toString().trim();
 
-        if (ip.isEmpty() || port.isEmpty()) {
-            statusText.setText("IP hoặc Port không được để trống");
+        if (TextUtils.isEmpty(ip) || TextUtils.isEmpty(port)) {
+            Toast.makeText(this, "IP hoặc Port không được để trống", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        try {
-            String serverUri = "tcp://" + ip + ":" + port;
-            String clientId = MqttClient.generateClientId();
-            mqttClient = new MqttClient(serverUri, clientId, new MemoryPersistence());
+        String serverUri = "tcp://" + ip + ":" + port;
 
+        try {
+            mqttClient = new MqttClient(serverUri, MqttClient.generateClientId(), new MemoryPersistence());
             MqttConnectOptions options = new MqttConnectOptions();
             options.setCleanSession(true);
-
             mqttClient.connect(options);
+
             mqttClient.subscribe(topicSub);
 
             mqttClient.setCallback(new MqttCallback() {
                 @Override
                 public void connectionLost(Throwable cause) {
-                    runOnUiThread(() -> statusText.setText("Disconnected"));
+                    runOnUiThread(() ->
+                            Toast.makeText(LedControlActivity.this, "Disconnected", Toast.LENGTH_SHORT).show()
+                    );
                 }
 
                 @Override
                 public void messageArrived(String topic, MqttMessage message) {
                     String msg = new String(message.getPayload());
                     runOnUiThread(() -> {
-                        statusText.setText("Status: " + msg);
-                        if (msg.contains("ON")) {
-                            isLightOn = true;
-                            ledIcon.setColorFilter(Color.YELLOW);
-                        } else if (msg.contains("OFF")) {
-                            isLightOn = false;
-                            ledIcon.setColorFilter(Color.GRAY);
+                        isLedOn = msg.equalsIgnoreCase("ON");
+                        isUpdatingSwitch = true;
+                        swToggle.setChecked(isLedOn);
+                        isUpdatingSwitch = false;
+
+                        if (isLedOn) {
+                            imgIcon.setImageResource(R.drawable.ic_light_on);
+                        } else {
+                            imgIcon.setImageResource(R.drawable.ic_light_off);
                         }
                     });
                 }
@@ -114,52 +129,44 @@ public class LedControlActivity extends AppCompatActivity {
                 public void deliveryComplete(IMqttDeliveryToken token) {}
             });
 
-            runOnUiThread(() -> statusText.setText("Connected to " + serverUri));
+            // Lưu IP và Port sau khi kết nối thành công
+            SharedPreferences prefs = getSharedPreferences("mqtt_config", MODE_PRIVATE);
+            prefs.edit()
+                    .putString("mqtt_ip", ip)
+                    .putString("mqtt_port", port)
+                    .apply();
+
+            Toast.makeText(this, "Connected to " + serverUri, Toast.LENGTH_SHORT).show();
 
         } catch (MqttException e) {
             e.printStackTrace();
-            runOnUiThread(() -> statusText.setText("MQTT Connect Failed"));
+            Toast.makeText(this, "Lỗi kết nối MQTT: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void publishCommand(String command) {
-        try {
-            if (mqttClient != null && mqttClient.isConnected()) {
-                mqttClient.publish(topicPub, new MqttMessage(command.getBytes()));
-            } else {
-                statusText.setText("MQTT chưa kết nối");
-            }
-        } catch (MqttException e) {
-            e.printStackTrace();
+        if (mqttClient == null || !mqttClient.isConnected()) {
+            Toast.makeText(this, "MQTT chưa kết nối", Toast.LENGTH_SHORT).show();
+            return;
         }
-    }
 
-    private void saveMqttConfig() {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString(KEY_IP, etIp.getText().toString().trim());
-        editor.putString(KEY_PORT, etPort.getText().toString().trim());
-        editor.apply();
-    }
-
-    private void loadSavedMqttConfig() {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        String savedIp = prefs.getString(KEY_IP, "192.168.4.1");
-        String savedPort = prefs.getString(KEY_PORT, "1883");
-
-        etIp.setText(savedIp);
-        etPort.setText(savedPort);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
         try {
-            if (mqttClient != null && mqttClient.isConnected()) {
-                mqttClient.disconnect();
+            MqttMessage message = new MqttMessage(command.getBytes());
+            mqttClient.publish(topicPub, message);
+
+            isUpdatingSwitch = true;
+            if (command.equalsIgnoreCase("ON")) {
+                imgIcon.setImageResource(R.drawable.ic_light_on);
+                swToggle.setChecked(true);
+            } else {
+                imgIcon.setImageResource(R.drawable.ic_light_off);
+                swToggle.setChecked(false);
             }
+            isUpdatingSwitch = false;
+
         } catch (MqttException e) {
             e.printStackTrace();
+            Toast.makeText(this, "Gửi lệnh thất bại", Toast.LENGTH_SHORT).show();
         }
     }
 }

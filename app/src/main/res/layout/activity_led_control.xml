@@ -1,91 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp">
+    tools:context=".LedControlActivity">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <TextView
             android:id="@+id/tvDeviceName"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Tên thiết bị"
-            android:textSize="24sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:textSize="20sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
 
         <ImageView
             android:id="@+id/imgDeviceIcon"
             android:layout_width="100dp"
             android:layout_height="100dp"
+            android:layout_gravity="center"
             android:src="@drawable/ic_device"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="16dp" />
 
         <EditText
-            android:id="@+id/etMqttIp"
+            android:id="@+id/edtIp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="MQTT IP Address"
-            android:inputType="text"
-            android:layout_marginBottom="8dp" />
+            android:hint="Nhập IP"
+            android:inputType="text" />
 
         <EditText
-            android:id="@+id/etMqttPort"
+            android:id="@+id/edtPort"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="MQTT Port"
-            android:inputType="number"
-            android:layout_marginBottom="8dp" />
+            android:hint="Nhập Port"
+            android:inputType="number" />
 
         <Button
-            android:id="@+id/btnSaveIp"
+            android:id="@+id/btnSaveMqtt"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Kết nối MQTT"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginTop="12dp" />
 
-        <!-- Hai nút ON/OFF -->
+        <Switch
+            android:id="@+id/switchToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bật / Tắt"
+            android:layout_marginTop="20dp" />
+
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginBottom="16dp">
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
 
             <Button
-                android:id="@+id/btnOn"
+                android:id="@+id/btnTurnOn"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="BẬT"
-                android:backgroundTint="@android:color/holo_green_light" />
+                android:backgroundTint="@android:color/holo_green_dark"
+                android:textColor="@android:color/white" />
 
             <View
                 android:layout_width="16dp"
                 android:layout_height="wrap_content" />
 
             <Button
-                android:id="@+id/btnOff"
+                android:id="@+id/btnTurnOff"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="TẮT"
-                android:backgroundTint="@android:color/holo_red_light" />
+                android:backgroundTint="@android:color/holo_red_dark"
+                android:textColor="@android:color/white" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Trạng thái MQTT"
-            android:textSize="16sp"
-            android:textColor="@android:color/holo_green_dark"
-            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 </ScrollView>

@@ -17,13 +17,13 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
     public interface OnDeviceLongClickListener {
         void onDeviceLongClick(int position);
     }
+
     private final OnDeviceLongClickListener longClickListener;
     private final OnDeviceClickListener clickListener;
 
     public interface OnDeviceClickListener {
         void onDeviceClick(DeviceModel device);
     }
-
 
     public DeviceAdapter(List<DeviceModel> deviceList,
                          OnDeviceClickListener clickListener,
@@ -45,7 +45,6 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
         DeviceModel device = deviceList.get(position);
         holder.tvDeviceName.setText(device.getName());
         holder.imgDeviceIcon.setImageResource(device.getIconResId());
-        holder.tvStatus.setText("Trạng thái: " + device.getStatus());
 
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
@@ -61,24 +60,19 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
         });
     }
 
-
     @Override
     public int getItemCount() {
         return deviceList.size();
     }
 
     static class DeviceViewHolder extends RecyclerView.ViewHolder {
-        TextView tvDeviceName, tvStatus;
+        TextView tvDeviceName;
         ImageView imgDeviceIcon;
 
         public DeviceViewHolder(View itemView) {
             super(itemView);
             tvDeviceName = itemView.findViewById(R.id.tvDeviceName);
             imgDeviceIcon = itemView.findViewById(R.id.imgDeviceIcon);
-            tvStatus = itemView.findViewById(R.id.tvStatus); // Thêm dòng này
         }
     }
-
-
-
 }
