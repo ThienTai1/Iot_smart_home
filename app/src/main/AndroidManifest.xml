@@ -33,6 +33,7 @@
 
 
     <application
+        android:name=".MyApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -59,7 +60,13 @@
         <activity android:name=".AddRoomActivity" />
         <activity android:name=".LedControlActivity" />
         <activity android:name=".DeviceDetailActivity" />
+        <activity
+            android:name=".QRScanActivity"
+            android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".WifiScanActivity"
+            android:screenOrientation="portrait" />
 
 
     </application>

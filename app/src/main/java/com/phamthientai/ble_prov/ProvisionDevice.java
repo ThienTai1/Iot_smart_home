@@ -256,7 +256,7 @@ public class ProvisionDevice extends AppCompatActivity {
         provisionManager.searchBleEspDevices("PROV_", new BleScanListener() {
             @Override
             public void scanStartFailed() {
-                showToast("BLE scan thất bại");
+                showToast("BLE off. Let turn on bluetooth");
                 progressBar.setVisibility(View.GONE);
             }
 
@@ -371,41 +371,52 @@ public class ProvisionDevice extends AppCompatActivity {
     }
 
     private void scanWifiNetworks() {
-        if (espDevice == null) {
-            showToast("Device not connected. Please connect first.");
+        if (espDevice == null || !deviceFound) {
+            showToast("Thiết bị chưa kết nối hoặc đã ngắt kết nối. Vui lòng kết nối lại.");
             return;
         }
 
         progressBar.setVisibility(View.VISIBLE);
-        updateStatus("Scanning WiFi networks...");
+        updateStatus("Đang quét mạng WiFi...");
         wifiNetworks.clear();
         wifiAdapter.notifyDataSetChanged();
 
-        espDevice.scanNetworks(new WiFiScanListener() {
-            @Override
-            public void onWifiListReceived(ArrayList<WiFiAccessPoint> wifiList) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
+        try {
+            espDevice.scanNetworks(new WiFiScanListener() {
+                @Override
+                public void onWifiListReceived(ArrayList<WiFiAccessPoint> wifiList) {
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
 
-                    wifiNetworks.clear();
-                    for (WiFiAccessPoint ap : wifiList) {
-                        wifiNetworks.add(ap.getWifiName());  // Lấy SSID
-                    }
+                        progressBar.setVisibility(View.GONE);
+                        wifiNetworks.clear();
+                        for (WiFiAccessPoint ap : wifiList) {
+                            if (ap.getWifiName() != null && !ap.getWifiName().isEmpty()) {
+                                wifiNetworks.add(ap.getWifiName());
+                            }
+                        }
+                        wifiAdapter.notifyDataSetChanged();
+                        updateStatus("Đã tìm thấy " + wifiNetworks.size() + " mạng WiFi.");
+                    });
+                }
 
-                    wifiAdapter.notifyDataSetChanged();
-                    updateStatus("WiFi scan completed. Found " + wifiList.size() + " networks.");
-                });
-            }
+                @Override
+                public void onWiFiScanFailed(Exception e) {
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
 
-            @Override
-            public void onWiFiScanFailed(Exception e) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    updateStatus("WiFi scan failed: " + e.getMessage());
-                });
-            }
-        });
+                        progressBar.setVisibility(View.GONE);
+                        updateStatus("WiFi scan failed: " + e.getMessage());
+                    });
+                }
+            });
+        } catch (Exception e) {
+            progressBar.setVisibility(View.GONE);
+            updateStatus("Lỗi khi quét mạng: " + e.getMessage());
+            showToast("Thiết bị có thể đã ngắt kết nối.");
+        }
     }
+
 
     private void provisionDevice(String ssid, String password) {
         progressBar.setVisibility(View.VISIBLE);

@@ -22,6 +22,15 @@
             android:layout_height="40dp"
             android:src="@drawable/ic_device" />
 
+
+        <ImageView
+            android:id="@+id/imgDeviceMenu"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="end"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="Menu thiết bị" />
+
 <!--        <TextView-->
 <!--            android:id="@+id/tvStatus"-->
 <!--            android:layout_width="wrap_content"-->

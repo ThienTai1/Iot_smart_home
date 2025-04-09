@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_config_mqtt"
+        android:title="Cấu hình MQTT" />
+    <item
+        android:id="@+id/menu_delete_device"
+        android:title="Xoá thiết bị" />
+</menu>

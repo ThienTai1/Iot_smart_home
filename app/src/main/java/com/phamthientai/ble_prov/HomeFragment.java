@@ -1,7 +1,6 @@
 package com.phamthientai.ble_prov;
 
 import android.app.Activity;
-import androidx.fragment.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -12,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -63,33 +63,11 @@ public class HomeFragment extends Fragment {
 
         RecyclerView deviceRecycler = view.findViewById(R.id.deviceRecyclerView);
         deviceRecycler.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        deviceAdapter = new DeviceAdapter(
-                deviceList,
-                device -> {
-                    // Chuyển sang LedControlActivity (dùng topic cố định)
-                    Intent intent = new Intent(getActivity(), LedControlActivity.class);
-                    intent.putExtra("device_name", device.getName());
-                    intent.putExtra("device_icon", device.getIconResId());
-                    startActivity(intent);
-                },
-                position -> {
-                    new AlertDialog.Builder(getContext())
-                            .setTitle("Xoá thiết bị")
-                            .setMessage("Bạn có chắc muốn xoá thiết bị này?")
-                            .setPositiveButton("Xoá", (dialog, which) -> {
-                                deviceList.remove(position);
-                                deviceAdapter.notifyItemRemoved(position);
-                                saveDeviceList();
-                            })
-                            .setNegativeButton("Huỷ", null)
-                            .show();
-                }
-        );
-
+        deviceAdapter = new DeviceAdapter(requireContext(), deviceList);
         deviceRecycler.setAdapter(deviceAdapter);
 
         View.OnClickListener onClickAddDevice = v -> {
-            Intent intent = new Intent(getActivity(), ProvisionDevice.class);
+            Intent intent = new Intent(getActivity(), QRScanActivity.class);
             startActivity(intent);
         };
 
@@ -159,11 +137,11 @@ public class HomeFragment extends Fragment {
             deviceList.addAll(loadedList);
         }
     }
+
     @Override
     public void onResume() {
         super.onResume();
         loadDeviceList();            // Load lại từ SharedPreferences
         deviceAdapter.notifyDataSetChanged(); // Cập nhật lại RecyclerView
     }
-
 }
